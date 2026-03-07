@@ -1,9 +1,61 @@
 import { loginUser, registerUser } from "./services/auth.js";
-import { getBestSellerProducts, getFeaturedProducts } from "./services/products.js";
-import { addProduct } from "./services/adminProducts.js";
+import { renderAuthForms, renderAuthStatus } from "./components/authForms.js";
+import { renderHeader } from "./components/header.js";
+import { renderBestSellers, renderCarousel } from "./components/homeSections.js";
+import { renderHomePage } from "./pages/homePage.js";
+import { renderProductsPage } from "./pages/productsPage.js";
+import { renderProductDetailsPage } from "./pages/productDetailsPage.js";
+import { renderCartPage } from "./pages/cartPage.js";
+import { renderAdminPage } from "./pages/adminPage.js";
+import { attachAdminEvents } from "./components/adminEvents.js";
+import { renderAdminOrdersPage, renderMyOrdersPage } from "./pages/ordersPage.js";
+import { attachCartEvents } from "./components/cartEvents.js";
+import { attachAdminOrderEvents } from "./components/orderEvents.js";
+import { renderAboutPage } from "./pages/aboutPage.js";
+import { renderContactPage } from "./pages/contactPage.js";
+import { renderFooter } from "./components/footer.js";
+import {
+  attachCarouselProductEvent,
+  attachProductCardEvents,
+  attachProductDetailsEvents
+} from "./components/productEvents.js";
+import {
+  attachCarouselEvents,
+  updateCarouselOnly
+} from "./components/carouselEvents.js";
+
+import {
+  getAllProducts,
+  getBestSellerProducts,
+  getFeaturedProducts,
+  getProductById,
+} from "./services/products.js";
+import {
+  addProduct,
+  deleteProduct,
+  getAllProductsAdmin,
+  updateProduct,
+} from "./services/adminProducts.js";
 import type { AuthUser } from "./types/Auth.js";
 import type { Product } from "./types/Product.js";
 import { clearAuth, getToken, getUser, saveAuth } from "./utils/storage.js";
+import {
+  createOrder,
+  getAllOrdersAdmin,
+  getMyOrders,
+  updateOrderStatus,
+} from "./services/orders.js";
+import {
+  addToCart,
+  getCart,
+  getCartTotal,
+  getCartItemsCount,
+  removeCartItem,
+  clearCart,
+  increaseCartItemQuantity,
+  decreaseCartItemQuantity,
+} from "./utils/cart.js";
+import type { CartItem } from "./types/Cart.js";
 
 const app = document.getElementById("app");
 
@@ -14,6 +66,15 @@ if (!app) {
 let featuredProductsState: Product[] = [];
 let currentSlideIndex = 0;
 let autoSlideInterval: number | null = null;
+let editingProductId: number | null = null;
+
+const setCurrentSlideIndex = (value: number): void => {
+  currentSlideIndex = value;
+};
+
+const setEditingProductId = (id: number | null): void => {
+  editingProductId = id;
+};
 
 declare global {
   interface Window {
@@ -22,224 +83,23 @@ declare global {
 }
 
 const navigate = (url: string): void => {
-  window.history.pushState({}, "", url);
-  renderPage();
+  window.location.hash = url;
 };
 
 window.navigate = navigate;
 
-window.addEventListener("popstate", () => {
+window.addEventListener("hashchange", () => {
   renderPage();
 });
 
-const renderHeader = (user: AuthUser | null): string => {
-  return `
-    <header class="site-header">
-      <div class="nav">
-        <h2 class="logo">Shop</h2>
+const attachAuthToggleEvent = (): void => {
+  const toggleButton = document.getElementById("toggle-auth-btn");
+  const formsWrapper = document.getElementById("auth-forms-wrapper");
 
-        <nav>
-          <button type="button" onclick="window.navigate('/')">Home</button>
-          ${
-            user?.role === "admin"
-              ? `<button type="button" onclick="window.navigate('/admin')">Admin</button>`
-              : ""
-          }
-        </nav>
-      </div>
-    </header>
-  `;
-};
-
-const renderAuthStatus = (user: AuthUser | null): string => {
-  if (!user) {
-    return `
-      <section class="auth-status">
-        <div class="auth-status-content">
-          <span>Nisi ulogovan.</span>
-        </div>
-      </section>
-    `;
-  }
-
-  return `
-    <section class="auth-status">
-      <div class="auth-status-content">
-        <span>Ulogovan: <strong>${user.name}</strong> (${user.role})</span>
-        <button id="logout-btn" class="secondary-btn" type="button">Logout</button>
-      </div>
-    </section>
-  `;
-};
-
-const renderAuthForms = (): string => {
-  return `
-    <section class="auth-section">
-      <div class="auth-grid">
-        <article class="auth-card">
-          <h2>Register</h2>
-          <form id="register-form" class="auth-form">
-            <input type="text" name="name" placeholder="Ime" required />
-            <input type="email" name="email" placeholder="Email" required />
-            <input type="password" name="password" placeholder="Lozinka" required />
-            <button type="submit">Registracija</button>
-          </form>
-          <p id="register-message" class="form-message"></p>
-        </article>
-
-        <article class="auth-card">
-          <h2>Login</h2>
-          <form id="login-form" class="auth-form">
-            <input type="email" name="email" placeholder="Email" required />
-            <input type="password" name="password" placeholder="Lozinka" required />
-            <button type="submit">Prijava</button>
-          </form>
-          <p id="login-message" class="form-message"></p>
-        </article>
-      </div>
-    </section>
-  `;
-};
-
-const renderBestSellers = (products: Product[]): string => {
-  return `
-    <section class="best-sellers-section">
-      <h2>Najprodavaniji proizvodi</h2>
-      <div class="best-sellers-grid">
-        ${products
-          .map(
-            (product) => `
-              <article class="product-card">
-                <img src="${product.image}" alt="${product.title}" />
-                <h3>${product.title}</h3>
-                <p>${product.description}</p>
-                <span>Kategorija: ${product.category}</span>
-                <strong>$${product.price.toFixed(2)}</strong>
-              </article>
-            `
-          )
-          .join("")}
-      </div>
-    </section>
-  `;
-};
-
-const renderCarousel = (products: Product[]): string => {
-  if (products.length === 0) {
-    return `
-      <section class="carousel-section">
-        <h2>Aktuelni proizvodi</h2>
-        <p>Nema aktuelnih proizvoda.</p>
-      </section>
-    `;
-  }
-
-  const activeProduct = products[currentSlideIndex];
-
-  return `
-    <section class="carousel-section">
-      <div class="section-header">
-        <h2>Aktuelni proizvodi</h2>
-      </div>
-
-      <div class="carousel">
-        <button class="carousel-btn" id="prev-slide" type="button" aria-label="Previous slide">
-          ‹
-        </button>
-
-        <article class="carousel-slide">
-          <div class="carousel-image-wrap">
-            <img src="${activeProduct.image}" alt="${activeProduct.title}" />
-          </div>
-
-          <div class="carousel-content">
-            <span class="carousel-category">${activeProduct.category}</span>
-            <h3>${activeProduct.title}</h3>
-            <p>${activeProduct.description}</p>
-            <strong>$${activeProduct.price.toFixed(2)}</strong>
-          </div>
-        </article>
-
-        <button class="carousel-btn" id="next-slide" type="button" aria-label="Next slide">
-          ›
-        </button>
-      </div>
-
-      <div class="carousel-dots">
-        ${products
-          .map(
-            (_, index) => `
-              <button
-                class="carousel-dot ${index === currentSlideIndex ? "active" : ""}"
-                data-index="${index}"
-                type="button"
-                aria-label="Go to slide ${index + 1}"
-              ></button>
-            `
-          )
-          .join("")}
-      </div>
-    </section>
-  `;
-};
-
-const renderAdminPage = (): string => {
-  return `
-    <main class="admin-page">
-      <h1>Admin Dashboard</h1>
-
-      <form id="add-product-form" class="admin-form">
-        <input name="title" placeholder="Product title" required />
-        <input name="price" type="number" step="0.01" placeholder="Price" required />
-        <input name="category" placeholder="Category" />
-        <input name="image" placeholder="Image URL" />
-        <textarea name="description" placeholder="Description"></textarea>
-        <button type="submit">Add product</button>
-      </form>
-
-      <p id="admin-message" class="form-message"></p>
-      <div id="admin-products"></div>
-    </main>
-  `;
-};
-
-const updateCarouselOnly = (): void => {
-  const carouselContainer = document.querySelector(".carousel-wrapper");
-
-  if (!carouselContainer) {
-    return;
-  }
-
-  carouselContainer.innerHTML = renderCarousel(featuredProductsState);
-  attachCarouselEvents();
-};
-
-const goToPreviousSlide = (): void => {
-  if (featuredProductsState.length === 0) {
-    return;
-  }
-
-  currentSlideIndex =
-    currentSlideIndex === 0
-      ? featuredProductsState.length - 1
-      : currentSlideIndex - 1;
-
-  updateCarouselOnly();
-  restartAutoSlide();
-};
-
-const goToNextSlide = (): void => {
-  if (featuredProductsState.length === 0) {
-    return;
-  }
-
-  currentSlideIndex =
-    currentSlideIndex === featuredProductsState.length - 1
-      ? 0
-      : currentSlideIndex + 1;
-
-  updateCarouselOnly();
-  restartAutoSlide();
+  toggleButton?.addEventListener("click", () => {
+    formsWrapper?.classList.toggle("auth-forms-hidden");
+    formsWrapper?.classList.toggle("auth-forms-visible");
+  });
 };
 
 const startAutoSlide = (): void => {
@@ -254,36 +114,18 @@ const startAutoSlide = (): void => {
           ? 0
           : currentSlideIndex + 1;
 
-      updateCarouselOnly();
+      updateCarouselOnly({
+  featuredProductsState,
+  currentSlideIndex,
+  setCurrentSlideIndex,
+  restartAutoSlide
+});
     }
   }, 4000);
 };
 
 const restartAutoSlide = (): void => {
   startAutoSlide();
-};
-
-const attachCarouselEvents = (): void => {
-  const prevButton = document.getElementById("prev-slide");
-  const nextButton = document.getElementById("next-slide");
-  const dots = document.querySelectorAll<HTMLButtonElement>(".carousel-dot");
-
-  prevButton?.addEventListener("click", () => {
-    goToPreviousSlide();
-  });
-
-  nextButton?.addEventListener("click", () => {
-    goToNextSlide();
-  });
-
-  dots.forEach((dot) => {
-    dot.addEventListener("click", () => {
-      const index = Number(dot.dataset.index);
-      currentSlideIndex = index;
-      updateCarouselOnly();
-      restartAutoSlide();
-    });
-  });
 };
 
 const refreshAuthUI = (): void => {
@@ -308,8 +150,12 @@ const attachLogoutEvent = (): void => {
 };
 
 const attachAuthFormEvents = (): void => {
-  const registerForm = document.getElementById("register-form") as HTMLFormElement | null;
-  const loginForm = document.getElementById("login-form") as HTMLFormElement | null;
+  const registerForm = document.getElementById(
+    "register-form",
+  ) as HTMLFormElement | null;
+  const loginForm = document.getElementById(
+    "login-form",
+  ) as HTMLFormElement | null;
   const registerMessage = document.getElementById("register-message");
   const loginMessage = document.getElementById("login-message");
 
@@ -375,115 +221,258 @@ const attachAuthFormEvents = (): void => {
   });
 };
 
-const attachAdminEvents = (): void => {
-  const form = document.getElementById("add-product-form") as HTMLFormElement | null;
-  const adminMessage = document.getElementById("admin-message");
-
-  form?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-
-    const token = getToken();
-
-    if (!token) {
-      if (adminMessage) {
-        adminMessage.textContent = "Nema tokena. Uloguj se kao admin.";
-      }
-      return;
-    }
-
-    const formData = new FormData(form);
-
-    const product = {
-      title: String(formData.get("title") || "").trim(),
-      price: Number(formData.get("price") || 0),
-      category: String(formData.get("category") || "").trim(),
-      image: String(formData.get("image") || "").trim(),
-      description: String(formData.get("description") || "").trim()
-    };
-
-    try {
-      await addProduct(product, token);
-
-      if (adminMessage) {
-        adminMessage.textContent = "Product added successfully.";
-      }
-
-      form.reset();
-    } catch (error) {
-      if (adminMessage) {
-        adminMessage.textContent =
-          error instanceof Error ? error.message : "Failed to add product.";
-      }
-    }
-  });
-};
-
 const renderPage = async (): Promise<void> => {
-  const path = window.location.pathname;
+  const path = window.location.hash.replace("#", "") || "/";
   const user = getUser();
 
   if (path === "/admin") {
-    if (!user || user.role !== "admin") {
+  if (!user || user.role !== "admin") {
+    app.innerHTML = `
+      ${renderHeader(user)}
+      <main class="home-page">
+        <p class="error-message">Access denied.</p>
+      </main>
+      ${renderFooter()}
+    `;
+    return;
+  }
+
+  const products = await getAllProductsAdmin();
+
+  app.innerHTML = `
+    ${renderHeader(user)}
+    ${renderAdminPage(products, editingProductId)}
+    ${renderFooter()}
+  `;
+
+  attachAdminEvents({
+    editingProductId,
+    setEditingProductId,
+    renderPage
+  });
+
+  return;
+}
+
+  if (path === "/products") {
+    try {
+      const products = await getAllProducts();
+
       app.innerHTML = `
         ${renderHeader(user)}
-        <main class="home-page">
-          <p class="error-message">Access denied.</p>
+        ${renderProductsPage(products)}
+        ${renderFooter()}
+      `;
+
+      attachProductCardEvents();
+      return;
+    } catch (error) {
+      console.error(error);
+      app.innerHTML = `
+        ${renderHeader(user)}
+        <main class="products-page">
+          <p class="error-message">Greška pri učitavanju proizvoda.</p>
         </main>
+        ${renderFooter()}
+      `;
+      return;
+    }
+  }
+
+  if (path.startsWith("/product/")) {
+    try {
+      const productId = Number(path.split("/")[2]);
+
+      if (Number.isNaN(productId)) {
+        app.innerHTML = `
+        ${renderHeader(user)}
+        <main class="product-details-page">
+          <p class="error-message">Neispravan ID proizvoda.</p>
+        </main>
+        ${renderFooter()}
+      `;
+        return;
+      }
+
+      const product = await getProductById(productId);
+
+      app.innerHTML = `
+      ${renderHeader(user)}
+      ${renderProductDetailsPage(product)}
+      ${renderFooter()}
+    `;
+
+      attachProductDetailsEvents(product, { renderPage });
+      return;
+    } catch (error) {
+      console.error(error);
+      app.innerHTML = `
+      ${renderHeader(user)}
+      <main class="product-details-page">
+        <p class="error-message">Proizvod nije pronađen.</p>
+      </main>
+      ${renderFooter()}
+    `;
+      return;
+    }
+  }
+
+  if (path === "/cart") {
+  const cartItems = getCart();
+
+  app.innerHTML = `
+    ${renderHeader(user)}
+    ${renderCartPage(cartItems, user)}
+    ${renderFooter()}
+  `;
+
+  attachCartEvents({ renderPage });
+  return;
+}
+
+    if (path === "/my-orders") {
+    const token = getToken();
+
+    if (!token) {
+      app.innerHTML = `
+        ${renderHeader(user)}
+        <main class="orders-page">
+          <p class="error-message">Moraš biti ulogovan.</p>
+        </main>
+        ${renderFooter()}
       `;
       return;
     }
 
-    app.innerHTML = `
-      ${renderHeader(user)}
-      ${renderAdminPage()}
-    `;
+    try {
+      const orders = await getMyOrders(token);
 
-    attachAdminEvents();
-    return;
+      app.innerHTML = `
+        ${renderHeader(user)}
+        ${renderMyOrdersPage(orders)}
+        ${renderFooter()}
+      `;
+      return;
+    } catch (error) {
+      console.error(error);
+      app.innerHTML = `
+        ${renderHeader(user)}
+        <main class="orders-page">
+          <p class="error-message">Greška pri učitavanju porudžbina.</p>
+        </main>
+        ${renderFooter()}
+      `;
+      return;
+    }
   }
+
+  if (path === "/admin-orders") {
+    const token = getToken();
+
+    if (!token || !user || user.role !== "admin") {
+      app.innerHTML = `
+        ${renderHeader(user)}
+        <main class="orders-page">
+          <p class="error-message">Admin pristup je potreban.</p>
+        </main>
+        ${renderFooter()}
+      `;
+      return;
+    }
+
+    try {
+      const orders = await getAllOrdersAdmin(token);
+
+      app.innerHTML = `
+        ${renderHeader(user)}
+        ${renderAdminOrdersPage(orders)}
+        ${renderFooter()}
+      `;
+
+      attachAdminOrderEvents({ renderPage });
+      return;
+    } catch (error) {
+      console.error(error);
+      app.innerHTML = `
+        ${renderHeader(user)}
+        <main class="orders-page">
+          <p class="error-message">Greška pri učitavanju svih porudžbina.</p>
+        </main>
+        ${renderFooter()}
+      `;
+      return;
+    }
+  }
+
+  if (path === "/about") {
+  app.innerHTML = `
+    ${renderHeader(user)}
+    ${renderAboutPage()}
+    ${renderFooter()}
+  `;
+  return;
+}
+
+if (path === "/contact") {
+  app.innerHTML = `
+    ${renderHeader(user)}
+    ${renderContactPage()}
+    ${renderFooter()}
+  `;
+
+  const contactForm = document.getElementById("contact-form") as HTMLFormElement | null;
+  const contactMessage = document.getElementById("contact-message");
+
+  contactForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    if (contactMessage) {
+      contactMessage.textContent = "Poruka je uspešno poslata.";
+    }
+
+    contactForm.reset();
+  });
+
+  return;
+}
 
   try {
     app.innerHTML = `<p class="loading">Učitavanje proizvoda...</p>`;
 
     const [featuredProducts, bestSellerProducts] = await Promise.all([
       getFeaturedProducts(),
-      getBestSellerProducts()
+      getBestSellerProducts(),
     ]);
 
     featuredProductsState = featuredProducts;
     currentSlideIndex = 0;
 
     app.innerHTML = `
-      ${renderHeader(user)}
-
-      <main class="home-page">
-        <section class="hero">
-          <h1>Online Shop</h1>
-          <p>Minimal shop frontend povezan sa TypeScript backend-om i SQLite bazom.</p>
-        </section>
-
-        <div id="auth-status-mount">
-          ${renderAuthStatus(user)}
-        </div>
-
-        ${renderAuthForms()}
-
-        <div class="carousel-wrapper">
-          ${renderCarousel(featuredProductsState)}
-        </div>
-
-        ${renderBestSellers(bestSellerProducts)}
-      </main>
-    `;
+  ${renderHeader(user)}
+  ${renderHomePage({
+    user,
+    featuredProducts: featuredProductsState,
+    bestSellerProducts,
+    currentSlideIndex
+  })}
+  ${renderFooter()}
+`;
 
     attachAuthFormEvents();
     attachLogoutEvent();
-    attachCarouselEvents();
+    attachAuthToggleEvent();
+    attachCarouselEvents({
+  featuredProductsState,
+  currentSlideIndex,
+  setCurrentSlideIndex,
+  restartAutoSlide
+});
+    attachCarouselProductEvent();
+    attachProductCardEvents();
     startAutoSlide();
   } catch (error) {
     console.error(error);
     app.innerHTML = `<p class="error-message">Greška pri učitavanju stranice.</p>`;
   }
 };
-
 renderPage();

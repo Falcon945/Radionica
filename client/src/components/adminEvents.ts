@@ -1,4 +1,4 @@
-import { addProduct, deleteProduct, updateProduct } from "../services/adminProducts.js";
+import { addProduct, deleteProduct, updateProduct, uploadProductImage } from "../services/adminProducts.js";
 import { getToken } from "../utils/storage.js";
 
 type AdminEventHandlersParams = {
@@ -89,12 +89,19 @@ export const attachAdminEvents = ({
 
     const formData = new FormData(form);
 
+    const fileInput = form.querySelector('input[name="imageFile"]') as HTMLInputElement | null;
+let finalImage = String(formData.get("image") || "").trim();
+
+if (fileInput?.files && fileInput.files.length > 0) {
+  finalImage = await uploadProductImage(fileInput.files[0], token);
+}
+
     const product = {
       title: String(formData.get("title") || "").trim(),
       price: Number(formData.get("price") || 0),
       stock: Number(formData.get("stock") || 0),
       category: String(formData.get("category") || "").trim(),
-      image: String(formData.get("image") || "").trim(),
+      image: finalImage,
       description: String(formData.get("description") || "").trim(),
       is_featured: formData.get("is_featured") ? 1 : 0,
       is_best_seller: formData.get("is_best_seller") ? 1 : 0

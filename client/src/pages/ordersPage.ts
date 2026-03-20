@@ -25,7 +25,7 @@ export const renderOrdersList = (orders: any[], isAdmin = false): string => {
                       <div class="order-item-row">
                         ${item.product_title} — ${item.quantity} x $${Number(item.price).toFixed(2)}
                       </div>
-                    `
+                    `,
                   )
                   .join("")}
               </div>
@@ -34,6 +34,13 @@ export const renderOrdersList = (orders: any[], isAdmin = false): string => {
                 isAdmin
                   ? `
                     <div class="order-admin-actions">
+                      <button
+                        type="button"
+                        class="print-order-btn"
+                        data-order-id="${order.id}"
+                        >
+                          Print
+                      </button>
                       <button
                         type="button"
                         class="ship-order-btn"
@@ -47,7 +54,7 @@ export const renderOrdersList = (orders: any[], isAdmin = false): string => {
                   : ""
               }
             </article>
-          `
+          `,
         )
         .join("")}
     </div>

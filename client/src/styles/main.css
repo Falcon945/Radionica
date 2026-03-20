@@ -847,3 +847,68 @@ a {
   display: block;
   margin-top: 20px;
 }
+
+.print-order-btn {
+  padding: 10px 14px;
+  border: 1px solid #2f3d2f;
+  border-radius: 10px;
+  background: #182018;
+  color: #fff;
+  cursor: pointer;
+  margin-right: 8px;
+}
+
+.print-order-btn:hover {
+  background: #223022;
+}
+
+.reviews-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #444;
+}
+
+#reviews-list {
+  margin: 1rem 0 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.review-card {
+  padding: 1rem;
+  border: 1px solid #444;
+  border-radius: 10px;
+  background: #1a1a1a;
+  color: #f5f5f5;
+}
+
+.review-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.review-card-header strong {
+  color: #ffffff;
+}
+
+.review-stars {
+  font-size: 1rem;
+  color: #ffd166;
+}
+
+.review-date {
+  font-size: 0.85rem;
+  color: #bdbdbd;
+  margin: 0.35rem 0 0.5rem;
+}
+
+.review-comment {
+  margin: 0;
+  color: #f0f0f0;
+}
+
+.no-reviews {
+  color: #bdbdbd;
+}

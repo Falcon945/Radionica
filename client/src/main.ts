@@ -1,14 +1,23 @@
 import { loginUser, registerUser } from "./services/auth.js";
 import { renderAuthForms, renderAuthStatus } from "./components/authForms.js";
 import { renderHeader } from "./components/header.js";
-import { renderBestSellers, renderCarousel } from "./components/homeSections.js";
+import {
+  renderBestSellers,
+  renderCarousel,
+} from "./components/homeSections.js";
 import { renderHomePage } from "./pages/homePage.js";
 import { renderProductsPage } from "./pages/productsPage.js";
-import { renderProductDetailsPage } from "./pages/productDetailsPage.js";
+import {
+  renderProductDetailsPage,
+  setupProductDetailsReviews,
+} from "./pages/productDetailsPage.js";
 import { renderCartPage } from "./pages/cartPage.js";
 import { renderAdminPage } from "./pages/adminPage.js";
 import { attachAdminEvents } from "./components/adminEvents.js";
-import { renderAdminOrdersPage, renderMyOrdersPage } from "./pages/ordersPage.js";
+import {
+  renderAdminOrdersPage,
+  renderMyOrdersPage,
+} from "./pages/ordersPage.js";
 import { attachCartEvents } from "./components/cartEvents.js";
 import { attachAdminOrderEvents } from "./components/orderEvents.js";
 import { renderAboutPage } from "./pages/aboutPage.js";
@@ -17,11 +26,11 @@ import { renderFooter } from "./components/footer.js";
 import {
   attachCarouselProductEvent,
   attachProductCardEvents,
-  attachProductDetailsEvents
+  attachProductDetailsEvents,
 } from "./components/productEvents.js";
 import {
   attachCarouselEvents,
-  updateCarouselOnly
+  updateCarouselOnly,
 } from "./components/carouselEvents.js";
 
 import {
@@ -115,11 +124,11 @@ const startAutoSlide = (): void => {
           : currentSlideIndex + 1;
 
       updateCarouselOnly({
-  featuredProductsState,
-  currentSlideIndex,
-  setCurrentSlideIndex,
-  restartAutoSlide
-});
+        featuredProductsState,
+        currentSlideIndex,
+        setCurrentSlideIndex,
+        restartAutoSlide,
+      });
     }
   }, 4000);
 };
@@ -226,33 +235,33 @@ const renderPage = async (): Promise<void> => {
   const user = getUser();
 
   if (path === "/admin") {
-  if (!user || user.role !== "admin") {
-    app.innerHTML = `
+    if (!user || user.role !== "admin") {
+      app.innerHTML = `
       ${renderHeader(user)}
       <main class="home-page">
         <p class="error-message">Access denied.</p>
       </main>
       ${renderFooter()}
     `;
-    return;
-  }
+      return;
+    }
 
-  const products = await getAllProductsAdmin();
+    const products = await getAllProductsAdmin();
 
-  app.innerHTML = `
+    app.innerHTML = `
     ${renderHeader(user)}
     ${renderAdminPage(products, editingProductId)}
     ${renderFooter()}
   `;
 
-  attachAdminEvents({
-    editingProductId,
-    setEditingProductId,
-    renderPage
-  });
+    attachAdminEvents({
+      editingProductId,
+      setEditingProductId,
+      renderPage,
+    });
 
-  return;
-}
+    return;
+  }
 
   if (path === "/products") {
     try {
@@ -302,6 +311,8 @@ const renderPage = async (): Promise<void> => {
       ${renderFooter()}
     `;
 
+      await setupProductDetailsReviews(product);
+
       attachProductDetailsEvents(product, { renderPage });
       return;
     } catch (error) {
@@ -318,19 +329,19 @@ const renderPage = async (): Promise<void> => {
   }
 
   if (path === "/cart") {
-  const cartItems = getCart();
+    const cartItems = getCart();
 
-  app.innerHTML = `
+    app.innerHTML = `
     ${renderHeader(user)}
     ${renderCartPage(cartItems, user)}
     ${renderFooter()}
   `;
 
-  attachCartEvents({ renderPage });
-  return;
-}
+    attachCartEvents({ renderPage });
+    return;
+  }
 
-    if (path === "/my-orders") {
+  if (path === "/my-orders") {
     const token = getToken();
 
     if (!token) {
@@ -405,36 +416,38 @@ const renderPage = async (): Promise<void> => {
   }
 
   if (path === "/about") {
-  app.innerHTML = `
+    app.innerHTML = `
     ${renderHeader(user)}
     ${renderAboutPage()}
     ${renderFooter()}
   `;
-  return;
-}
+    return;
+  }
 
-if (path === "/contact") {
-  app.innerHTML = `
+  if (path === "/contact") {
+    app.innerHTML = `
     ${renderHeader(user)}
     ${renderContactPage()}
     ${renderFooter()}
   `;
 
-  const contactForm = document.getElementById("contact-form") as HTMLFormElement | null;
-  const contactMessage = document.getElementById("contact-message");
+    const contactForm = document.getElementById(
+      "contact-form",
+    ) as HTMLFormElement | null;
+    const contactMessage = document.getElementById("contact-message");
 
-  contactForm?.addEventListener("submit", (event) => {
-    event.preventDefault();
+    contactForm?.addEventListener("submit", (event) => {
+      event.preventDefault();
 
-    if (contactMessage) {
-      contactMessage.textContent = "Poruka je uspešno poslata.";
-    }
+      if (contactMessage) {
+        contactMessage.textContent = "Poruka je uspešno poslata.";
+      }
 
-    contactForm.reset();
-  });
+      contactForm.reset();
+    });
 
-  return;
-}
+    return;
+  }
 
   try {
     app.innerHTML = `<p class="loading">Učitavanje proizvoda...</p>`;
@@ -453,7 +466,7 @@ if (path === "/contact") {
     user,
     featuredProducts: featuredProductsState,
     bestSellerProducts,
-    currentSlideIndex
+    currentSlideIndex,
   })}
   ${renderFooter()}
 `;
@@ -462,11 +475,11 @@ if (path === "/contact") {
     attachLogoutEvent();
     attachAuthToggleEvent();
     attachCarouselEvents({
-  featuredProductsState,
-  currentSlideIndex,
-  setCurrentSlideIndex,
-  restartAutoSlide
-});
+      featuredProductsState,
+      currentSlideIndex,
+      setCurrentSlideIndex,
+      restartAutoSlide,
+    });
     attachCarouselProductEvent();
     attachProductCardEvents();
     startAutoSlide();

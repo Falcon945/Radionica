@@ -6,6 +6,8 @@ import { seedDatabase } from "./database/seed";
 import productRoutes from "./routes/productRoutes";
 import authRoutes from "./routes/authRoutes";
 import orderRoutes from "./routes/orderRoutes";
+import path from "path";
+import reviewsRoutes from "./routes/reviewsRoutes";
 
 dotenv.config();
 
@@ -15,19 +17,20 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-
 initializeDatabase();
 seedDatabase();
 
 app.get("/", (_req: Request, res: Response) => {
   res.json({
-    message: "Online shop server is running."
+    message: "Online shop server is running.",
   });
 });
 
 app.use("/api/products", productRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.use("/api/reviews", reviewsRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

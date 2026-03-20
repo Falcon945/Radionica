@@ -1,5 +1,36 @@
 const API_BASE_URL = "http://localhost:5000/api/products";
 
+export const uploadProductImage = async (
+  file: File,
+  token: string
+): Promise<string> => {
+  const formData = new FormData();
+  formData.append("image", file);
+
+  const response = await fetch(`${API_BASE_URL}/upload-image`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: formData
+  });
+
+  const rawText = await response.text();
+
+  let data: any = {};
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    throw new Error("Server did not return valid JSON during image upload.");
+  }
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to upload image.");
+  }
+
+  return `http://localhost:5000${data.imageUrl}`;
+};
+
 type CreateProductPayload = {
   title: string;
   description: string;
@@ -96,3 +127,4 @@ export const updateProduct = async (
 
   return data;
 };
+

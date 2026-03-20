@@ -46,12 +46,7 @@ export const renderAdminPage = (
           value="${editingProduct?.category || ""}"
         />
 
-        <input
-          name="image"
-          placeholder="Image URL"
-          value="${editingProduct?.image || ""}"
-        />
-
+        <input type="file" name="imageFile" accept="image/*" />
         <textarea
           name="description"
           placeholder="Description"
